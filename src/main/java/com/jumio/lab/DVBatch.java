@@ -15,11 +15,9 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import static java.nio.file.StandardCopyOption.*;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Properties;
@@ -27,53 +25,62 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpHeaders;
+import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.util.EntityUtils;
 
 public class DVBatch {
-	
+
     private static final String LINE_FEED = "\r\n";
 
-	private static final String PROPERTIES_FILE = "config.properties";
-	
-	private static final String API_SECRET_ = "secret=";
-	private static final String API_TOKEN_ = "token=";
+    private static final String PROPERTIES_FILE = "config.properties";
 
-	private static final String USER_AGENT_TXT = "Jumio NV Test Tool/v1.0";
+    private static final String API_SECRET_ = "secret=";
+    private static final String API_TOKEN_ = "token=";
+
+    private static final String USER_AGENT_TXT = "Jumio NV Test Tool/v1.0";
     private static final String API_SECRET = "secret";
     private static final String API_TOKEN = "token";
-	private static final String PATH_TO_FOLDER = "pathToFolder";
-	private static final String SERVER_URL = "serverUrl";
-	private static final String MERCHANT_SCAN_REFERENCE = "merchantScanReference";
-	private static final String CUSTOMER_ID = "customerId";
-	private static final String TYPE = "type";
-	private static final String COUNTRY = "country";
-	private static final String ENABLE_EXTRACTION = "enableExtraction";
-	private static final String SCAN_REFERENCE = "scanReference";
-	private static final String TIME_STAMP = "timestamp";
-	private static final String NUMBER_TO_SUBMIT = "numberToSubmit";
-	private static final String FRONTSIDE_IMAGE = "frontsideImage";
-	
+    private static final String PATH_TO_FOLDER = "pathToFolder";
+    private static final String SERVER_URL = "serverUrl";
+    private static final String MERCHANT_SCAN_REFERENCE = "merchantScanReference";
+    private static final String CUSTOMER_ID = "customerId";
+    private static final String TYPE = "type";
+    private static final String COUNTRY = "country";
+    private static final String ENABLE_EXTRACTION = "enableExtraction";
+    private static final String SCAN_REFERENCE = "scanReference";
+    private static final String TIME_STAMP = "timestamp";
+    private static final String NUMBER_TO_SUBMIT = "numberToSubmit";
+    private static final String FRONTSIDE_IMAGE = "frontsideImage";
+
     private static String serverUrl;
     private static String merchantScanReference;
     private static String auth;
-	
-	public static void main(String[] args) {
+
+    public static void main(String[] args) throws InterruptedException {
         FileInputStream inputStream = null;
-		try {
-            inputStream = new FileInputStream(PROPERTIES_FILE);			
-			inputStream = new FileInputStream(PROPERTIES_FILE);			
+        try {
+            inputStream = new FileInputStream(PROPERTIES_FILE);
+            inputStream = new FileInputStream(PROPERTIES_FILE);
         } catch(IOException ioexc){
-			System.out.println(ioexc.getMessage());
+            System.out.println(ioexc.getMessage());
             return;
-		}
+        }
 
         Properties prop = new Properties();
-		try {
+        try {
             prop.load(inputStream);
         } catch(IOException ioexc){
-			System.out.println(ioexc.getMessage());
+            System.out.println(ioexc.getMessage());
             return;
-		}
-        
+        }
+
         String pathToFolder = prop.getProperty(PATH_TO_FOLDER);
         if (pathToFolder == null) {
             System.out.println("pathToFolder is missing in config.properties.");
@@ -97,7 +104,7 @@ public class DVBatch {
 
         int numberToSubmit = Integer.parseInt(prop.getProperty(NUMBER_TO_SUBMIT));
 
-        //arguments from command line
+//arguments from command line
         for(int i = 0; i < args.length; i++) {
             if(args[i].contains(API_SECRET_)) {
                 secret = args[i].replace(API_SECRET_, "");
@@ -119,7 +126,7 @@ public class DVBatch {
 
         File folder = new File(pathToFolder);
 
-        // Create the completed folder if missing so we can move submitted files
+// Create the completed folder if missing so we can move submitted files
         StringBuffer completedPath = new StringBuffer(pathToFolder).append(File.separator).append("completed");
         File completedFolder = new File(completedPath.toString());
         if (!completedFolder.exists()) {
@@ -127,12 +134,12 @@ public class DVBatch {
         }
 
         ArrayList<String> filesArray = getAllFilesFromDirectory(folder);
-        if (filesArray == null && filesArray.size() == 0) {
+        if (filesArray == null || filesArray.size() == 0) {
             System.out.println("No files to submit");
             return;
         }
 
-        // Convert btoa
+// Convert btoa
         auth = token + ":" + secret;
         auth = Base64.getEncoder().encodeToString(auth.getBytes());
 
@@ -143,14 +150,15 @@ public class DVBatch {
                 break;
             }
 
-            // Set path
+// Set path
             Path file = Paths.get(str);
             String filename = file.getFileName().toString();
 
             String scan_ref = initiate(filename, "BS", "USA");
             if (scan_ref != null) {
                 System.out.println(filename + ", " + scan_ref);
-                if (upload(scan_ref,file) != null) {
+//                if (upload(scan_ref,file) != null) {
+                if(uploadNew(scan_ref, file)) {
                     System.out.println("Uploading");
                     if (finalize(scan_ref) != null) {
                         System.out.println("Success!");
@@ -166,20 +174,20 @@ public class DVBatch {
                 continue;
             }
 
-            // if successfully submitted, move the files to completed.
-            // if (path != null) {
-            //    path.toFile().renameTo(new File(completedPath + path.getFileSystem().getSeparator() + filename));
-            //}
-
+// if successfully submitted, move the files to completed.
+            if (file != null) {
+                file.toFile().renameTo(new File(completedPath + file.getFileSystem().getSeparator() + filename));
+            }
             counter++;
 
+            Thread.sleep(10000);
         }
 
         System.out.println("Total Submitted: " + counter);
-	}
+    }
 
     private static String initiate(String customerId, String type, String country) {
-        // Open Connection
+// Open Connection
         HttpURLConnection conn;
         URL url = null;
         try {
@@ -196,7 +204,7 @@ public class DVBatch {
             return null;
         }
 
-        // Set headers
+// Set headers
         conn.setDoOutput(true);
         conn.setDoInput(true);
         try {
@@ -210,7 +218,7 @@ public class DVBatch {
         conn.setRequestProperty("Content-Type", "application/json");
         conn.setRequestProperty("User-Agent", USER_AGENT_TXT);
 
-        // Combine JSON
+// Combine JSON
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty(MERCHANT_SCAN_REFERENCE, merchantScanReference);
         jsonObject.addProperty(CUSTOMER_ID, customerId);
@@ -218,7 +226,7 @@ public class DVBatch {
         jsonObject.addProperty(COUNTRY, country);
         jsonObject.addProperty(ENABLE_EXTRACTION, "true");
 
-        // Finished building jsonObject; Send to server
+// Finished building jsonObject; Send to server
         OutputStreamWriter wr = null;
         try {
             wr = new OutputStreamWriter(conn.getOutputStream());
@@ -230,7 +238,7 @@ public class DVBatch {
             return null;
         }
 
-        // Receive response
+// Receive response
         String streamToString = null;
         try {
             streamToString = convertStreamToString(conn.getInputStream());
@@ -239,7 +247,7 @@ public class DVBatch {
             return null;
         }
 
-        // Parse response
+// Parse response
         JsonParser parser = new JsonParser();
         JsonObject jsonObj = null;
         try {
@@ -249,10 +257,10 @@ public class DVBatch {
             return null;
         }
 
-        // Disconnect
+// Disconnect
         conn.disconnect();
 
-        // Get response
+// Get response
         JsonElement jsonElm = jsonObj.get(SCAN_REFERENCE);
         if (jsonElm != null) {
             return jsonElm.getAsString();
@@ -262,7 +270,7 @@ public class DVBatch {
     }
 
     private static String upload(String scan_ref, Path file) {
-        // Open Connection
+// Open Connection
         HttpURLConnection conn;
         URL url = null;
         try {
@@ -279,11 +287,11 @@ public class DVBatch {
             return null;
         }
 
-        // Boundary
-        String boundary = "--" + System.currentTimeMillis(); 
+// Boundary
+        String boundary = "--" + System.currentTimeMillis();
         System.out.println(boundary);
 
-        // Set headers
+// Set headers
         conn.setDoOutput(true);
         conn.setDoInput(true);
         try {
@@ -296,16 +304,16 @@ public class DVBatch {
         conn.setRequestProperty("Accept", "application/json");
         conn.setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
         conn.setRequestProperty("User-Agent", USER_AGENT_TXT);
-        
-        // Finished building jsonObject; Send to server
+
+// Finished building jsonObject; Send to server
         OutputStream outputStream = null;
         PrintWriter wr = null;
         try {
             outputStream = conn.getOutputStream();
             wr = new PrintWriter(new OutputStreamWriter(outputStream, "UTF-8"), true);
             wr.append("--" + boundary).append(LINE_FEED).flush();
-            //wr.append("Content-Disposition: form-data; name=\"image\"; filename=\"" + file.getFileName().toString() + "\"").append(LINE_FEED);
-            //wr.append("Content-Type: image/pdf").append(LINE_FEED);
+//wr.append("Content-Disposition: form-data; name=\"image\"; filename=\"" + file.getFileName().toString() + "\"").append(LINE_FEED);
+//wr.append("Content-Type: image/pdf").append(LINE_FEED);
 
             FileInputStream inputStream = new FileInputStream(file.toString());
             byte[] buf = new byte[4096];
@@ -317,14 +325,14 @@ public class DVBatch {
             inputStream.close();
 
             wr.append(LINE_FEED).flush();
-            wr.append("--" + boundary + "--").flush();
+            wr.append("--" + boundary + "--").append(LINE_FEED).flush();
             wr.close();
         } catch (IOException ioexc) {
             System.out.println(scan_ref + ": " + ioexc.getMessage());
             return null;
         }
 
-        // Receive response
+// Receive response
         String streamToString = null;
         try {
             streamToString = convertStreamToString(conn.getInputStream());
@@ -333,7 +341,7 @@ public class DVBatch {
             return null;
         }
 
-        // Parse response
+// Parse response
         JsonParser parser = new JsonParser();
         JsonObject jsonObj = null;
         try {
@@ -343,10 +351,10 @@ public class DVBatch {
             return null;
         }
 
-        // Disconnect
+// Disconnect
         conn.disconnect();
 
-        // Get response
+// Get response
         JsonElement jsonElm = jsonObj.get(TIME_STAMP);
         if (jsonElm != null) {
             return jsonElm.getAsString();
@@ -356,7 +364,7 @@ public class DVBatch {
     }
 
     private static String finalize(String scan_ref) {
-        // Open Connection
+// Open Connection
         HttpURLConnection conn;
         URL url = null;
         try {
@@ -373,7 +381,7 @@ public class DVBatch {
             return null;
         }
 
-        // Set headers
+// Set headers
         conn.setDoOutput(true);
         conn.setDoInput(true);
         try {
@@ -385,8 +393,8 @@ public class DVBatch {
         conn.setRequestProperty("Authorization", "Basic " + auth);
         conn.setRequestProperty("Accept", "application/json");
         conn.setRequestProperty("User-Agent", USER_AGENT_TXT);
-        
-        // Finished building jsonObject; Send to server
+
+// Finished building jsonObject; Send to server
         OutputStreamWriter wr = null;
         try {
             wr = new OutputStreamWriter(conn.getOutputStream());
@@ -397,7 +405,7 @@ public class DVBatch {
             return null;
         }
 
-        // Receive response
+// Receive response
         String streamToString = null;
         try {
             streamToString = convertStreamToString(conn.getInputStream());
@@ -406,7 +414,7 @@ public class DVBatch {
             return null;
         }
 
-        // Parse response
+// Parse response
         JsonParser parser = new JsonParser();
         JsonObject jsonObj = null;
         try {
@@ -416,10 +424,10 @@ public class DVBatch {
             return null;
         }
 
-        // Disconnect
+// Disconnect
         conn.disconnect();
 
-        // Get response
+// Get response
         JsonElement jsonElm = jsonObj.get(TIME_STAMP);
         if (jsonElm != null) {
             return jsonElm.getAsString();
@@ -428,50 +436,50 @@ public class DVBatch {
         return null;
     }
 
-	/**
-	 * getAllFilesFromDirectory creates a list of doc.  
-	 * 
-	 * @param directory - Directory of all files to be verified
-	 * @return
-	 */
-	private static ArrayList<String> getAllFilesFromDirectory(File directory) {
+    /**
+     * getAllFilesFromDirectory creates a list of doc.
+     *
+     * @param directory - Directory of all files to be verified
+     * @return
+     */
+    private static ArrayList<String> getAllFilesFromDirectory(File directory) {
         ArrayList<String> resultList = new ArrayList<String>(1);
-		FilenameFilter filter = new FilenameFilter() {
-			public boolean accept(File dir, String name) {
-				if (name.endsWith("pdf")) {
-					return true;
-				} else {
-					return false;
-				}
-			}
-		};
-		File[] f = directory.listFiles(filter);
-		if (f != null) {
-			for (File file : f) {
-				try {
-					resultList.add(file.getCanonicalPath());
-				} catch (IOException e) {
-					System.out.println(e.getMessage());
-				}
-			}
-		} else {
-			System.out.println(directory.getName() + " does not exist.");
-			return null;
-		}
+        FilenameFilter filter = new FilenameFilter() {
+            public boolean accept(File dir, String name) {
+                if (name.endsWith("pdf")) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        };
+        File[] f = directory.listFiles(filter);
+        if (f != null) {
+            for (File file : f) {
+                try {
+                    resultList.add(file.getCanonicalPath());
+                } catch (IOException e) {
+                    System.out.println(e.getMessage());
+                }
+            }
+        } else {
+            System.out.println(directory.getName() + " does not exist.");
+            return null;
+        }
 
-		if (resultList.size() > 0) {
-			if (resultList.size() > 100) {
-				System.out.println("There are more than 100 files in the folder. Only the first 100 will be processed.");
-        	}
+        if (resultList.size() > 0) {
+            if (resultList.size() > 100) {
+                System.out.println("There are more than 100 files in the folder. Only the first 100 will be processed.");
+            }
             return resultList;
         }
         else {
-        	System.out.println(directory.getName() + " is empty.");
+            System.out.println(directory.getName() + " is empty.");
             return null;
         }
     }
 
-	private static String convertStreamToString(InputStream is) {
+    private static String convertStreamToString(InputStream is) {
         BufferedReader reader = new BufferedReader(new InputStreamReader(is));
         StringBuilder sb = new StringBuilder();
 
@@ -482,16 +490,42 @@ public class DVBatch {
             }
         }
         catch (Exception e) {
-        	System.out.println(e.getMessage());
+            System.out.println(e.getMessage());
         }
         finally {
             try {
                 is.close();
             }
             catch (Exception e) {
-            	System.out.println(e.getMessage());
+                System.out.println(e.getMessage());
             }
         }
         return sb.toString();
+    }
+
+    private static Boolean uploadNew(String scanRef, Path file) {
+        try (CloseableHttpClient httpClient = HttpClientBuilder.create().build()) {
+
+            MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+            builder.addBinaryBody("image", Files.readAllBytes(file), ContentType.create("application/pdf"), file.getFileName().toString());
+            HttpEntity entity = builder.build();
+
+            HttpPost request = new HttpPost(serverUrl + "/" + scanRef + "/document");
+            request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + auth);
+            request.setHeader(HttpHeaders.ACCEPT, "application/json");
+            request.setHeader(HttpHeaders.USER_AGENT, USER_AGENT_TXT);
+            request.setEntity(entity);
+            // Create a custom response handler
+            ResponseHandler<Boolean> responseHandler = response -> {
+                int status = response.getStatusLine().getStatusCode();
+                HttpEntity responseEntity = response.getEntity();
+                System.out.println(EntityUtils.toString(responseEntity));
+                return status == 200;
+            };
+            return httpClient.execute(request, responseHandler);
+        } catch (IOException e) {
+            System.out.println(e);
+            return false;
+        }
     }
 }
