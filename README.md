@@ -1,4 +1,4 @@
-# PerformNetverifyBatch
+# DV-Batch-Java
 
 Command-line client that can be used by prospect merchants to test Netverify services.
 
@@ -38,7 +38,7 @@ At the project's root directory, use Maven to compile the program.
 $ mvn compile assembly:single
 ```
 
-After compilation, 'PerformNetverify-1.0-SNAPSHOT-jar-with-dependencies.jar' should appear in the 'target' directory. This file is the compiled Java program.
+After compilation, 'DVBatch-1.0-SNAPSHOT-jar-with-dependencies.jar' should appear in the 'target' directory. This file is the compiled Java program.
 
 ## Running the program
 
@@ -48,15 +48,9 @@ Below are the parameters that can be customized. When parameter value is specifi
 
 Name|Command Line Arg|Example
 ---|---|---
-pathToImageFolder |yes	|images
+pathToImageFolder |yes	|docs
 serverUrl	|yes	|https://netverify.com/api/netverify/v2
-enabledFields	|no	|idNumber,idFirstName,idLastName,idDob,idExpiry,idUsState,idPersonalNumber,idAddress,idFaceMatch
 merchantReportingCriteria	|no	|Jumio NV Test Tool
-faceImageRequired |no  |true
-backImageRequired |no  |true
-frontSuffix |no |front
-backSuffix |no  |back
-faceSuffix |no  |face
 
 ### Set API token/secret in environment variables (optional)
 
@@ -69,18 +63,14 @@ $ export API_SECRET=********
 
 ### Execution
 
-1. Name the front side of the ID with 'frontSuffix'. For example, 'User12345_front.jpg'.
+1. Name the doc file with customerId. For example, '<customer_id>.pdf'.
 
-2. Name the back side of the ID with 'backSuffix'. For example, 'User12345_back.jpg'.
+2. Take 'DVBatch-1.0-SNAPSHOT-jar-with-dependencies.jar' and copy to the image folder (optional).
 
-3. Name the selfie with 'faceSuffix'. For example, 'User12345_face.jpg'.
-
-4. Take 'PerformNetverify-1.0-SNAPSHOT-jar-with-dependencies.jar' and copy to the image folder (optional).
-
-5. Use below command to run the program.
+3. Use below command to run the program.
 
 ```
-$ java -jar target/PerformNetverify-1.0-SNAPSHOT-jar-with-dependencies.jar token=$API_TOKEN secret=$API_SECRET 
+$ java -jar target/DVBatch-1.0-SNAPSHOT-jar-with-dependencies.jar token=$API_TOKEN secret=$API_SECRET 
 ```
 
 ## Built With
