@@ -49,8 +49,9 @@ Below are the parameters that can be customized. When parameter value is specifi
 Name|Command Line Arg|Example
 ---|---|---
 pathToImageFolder |yes	|docs
-serverUrl	|yes	|https://netverify.com/api/netverify/v2
-merchantReportingCriteria	|no	|Jumio NV Test Tool
+serverUrl	|yes	|https://acquisition.netverify.com/api/netverify/v2/acquisitions
+merchantReportingCriteria	|no	|Remediation
+numberToSubmit|yes |2
 
 ### Set API token/secret in environment variables (optional)
 
