@@ -1,6 +1,6 @@
 # DV-Batch-Java
 
-Command-line client that can be used by prospect merchants to test Netverify services.
+Command-line client that can be used by prospect merchants to test Netverify service.
 
 ## Getting Started
 
