@@ -53,6 +53,17 @@ serverUrl	|yes	|https://acquisition.netverify.com/api/netverify/v2/acquisitions
 merchantReportingCriteria	|no	|Remediation
 numberToSubmit|yes |2
 
+#### Configure the datacenter
+
+The program defaults to US datacenter. Please change the URL to point to the designated datacenter.
+
+```
+HTTP request method: POST
+REST URL (US): https://acquisition.netverify.com/api/netverify/v2/acquisitions
+REST URL (EU): https://acquisition.lon.netverify.com/api/netverify/v2/acquisitions
+REST URL (SGP): https://acquisition.core-sgp.jumio.com/api/netverify/v2/acquisitions
+```
+
 ### Set API token/secret in environment variables (optional)
 
 Netverify requires authentication through API token and secret. They can be stored in environment variables for easy access.
